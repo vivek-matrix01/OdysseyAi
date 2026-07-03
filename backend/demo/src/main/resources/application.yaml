@@ -1,16 +1,18 @@
 spring:
   application:
     name: demo
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
+    url: jdbc:postgresql://localhost:5432/OdysseyAi
     username: postgres
     password: megha
+    driver-class-name: org.postgresql.Driver
 
-    jpa:
-      show-sql: true
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
       hibernate:
-        ddl-auto: update
-      properties:
-        hibernate:
-          dialect: org.hibernate.dialect.PostgreSQLDialect
-          format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true

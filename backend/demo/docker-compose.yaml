@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: 'postgres:latest'
+    container_name: OdysseyAi-db
+    environment:
+      - 'POSTGRES_DB=OdysseyAi'
+      - 'POSTGRES_USER=postgres'
+      - 'POSTGRES_PASSWORD=megha'
+    
+    ports:
+      - '5432:5432'
+
+ 
