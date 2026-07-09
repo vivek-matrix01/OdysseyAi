@@ -12,23 +12,24 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 @Getter
-@Setter
 @Table(name="users")
 @Entity
 public class User extends BaseEntity {
 
 
+    @Setter
     @NotBlank
-
     @Column(nullable = false, length = 50)
     private String firstName;
 
+    @Setter
     @NotBlank
     @Column(nullable = false, length = 50)
     private String lastName;
 
+
     @Email
-    @Column(nullable = false,unique = true,length = 100)
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
 
     @Column(nullable = false)
@@ -42,4 +43,45 @@ public class User extends BaseEntity {
 
     private boolean emailVerified;
 
+
+    public void initializeNewAccount() {
+        this.role = Role.USER;
+        this.accountStatus = AccountStatus.ACTIVE;
+        this.emailVerified = false;
+    }
+
+    public void assignRole(Role role) {
+        this.role = role;
+    }
+
+    public void activate() {
+        this.accountStatus = AccountStatus.ACTIVE;
+    }
+
+    public void suspend() {
+        this.accountStatus = AccountStatus.SUSPENDED;
+    }
+
+    public void block() {
+        this.accountStatus = AccountStatus.BLOCKED;
+    }
+
+    public void verifyEmail() {
+        this.emailVerified = true;
+    }
+
+    public void markEmailAsUnverified() {
+        this.emailVerified = false;
+    }
+
+    public void updatePassword(String encodedPassword) {
+
+        this.password = encodedPassword;
+    }
+
+
+    public void changeEmail(String newEmail) {
+        this.email = newEmail;
+        this.emailVerified = false;
+    }
 }
