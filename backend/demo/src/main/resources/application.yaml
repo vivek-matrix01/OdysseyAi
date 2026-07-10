@@ -8,6 +8,10 @@ spring:
     password: megha
     driver-class-name: org.postgresql.Driver
 
+  docker:
+    compose:
+      file: demo/docker-compose.yaml
+
   jpa:
     show-sql: true
     hibernate:
