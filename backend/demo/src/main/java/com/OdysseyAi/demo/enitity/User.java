@@ -7,6 +7,12 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -14,7 +20,7 @@ import lombok.*;
 @Getter
 @Table(name="users")
 @Entity
-public class User extends BaseEntity {
+public class User extends BaseEntity implements UserDetails {
 
 
     @Setter
@@ -48,6 +54,7 @@ public class User extends BaseEntity {
         this.role = Role.USER;
         this.accountStatus = AccountStatus.ACTIVE;
         this.emailVerified = false;
+
     }
 
     public void assignRole(Role role) {
@@ -83,5 +90,37 @@ public class User extends BaseEntity {
     public void changeEmail(String newEmail) {
         this.email = newEmail;
         this.emailVerified = false;
+    }
+
+
+   // Implementing user details for spring security
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_"+role.name())) ;
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return this.accountStatus != AccountStatus.BLOCKED && this.accountStatus != AccountStatus.SUSPENDED;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return this.accountStatus == AccountStatus.ACTIVE;
     }
 }

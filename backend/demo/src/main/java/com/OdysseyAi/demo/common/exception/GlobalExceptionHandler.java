@@ -41,6 +41,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleDuplicateResource(DuplicateResourceException ex, HttpServletRequest request) {
         return buildErrorResponse(ex, HttpStatus.CONFLICT, request);
     }
+    // 403 FORBIDDEN (Authorization failures)
+    @ExceptionHandler(TokenRefreshException.class)
+    public ResponseEntity<ApiError> handleTokenRefresh(TokenRefreshException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex, HttpStatus.UNAUTHORIZED, request);
+    }
 
     // 500 INTERNAL SERVER ERROR (The ultimate fallback for unexpected crashes)
     @ExceptionHandler(Exception.class)
@@ -62,7 +67,7 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .status(status.value())
                 .error(status.getReasonPhrase())
-                .message(ex.getMessage()) // Pulls the exact message you threw in your service
+                .message(ex.getMessage())
                 .path(request.getRequestURI())
                 .build();
         return new ResponseEntity<>(error, status);
