@@ -8,21 +8,50 @@ spring:
     password: megha
     driver-class-name: org.postgresql.Driver
 
+
+    
   docker:
     compose:
-      file: demo/docker-compose.yaml
+      file: docker-compose.yaml
 
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+
+  mail:
+    # Notice the :sandbox.smtp.mailtrap.io added here!
+    host: ${MAIL_HOST:sandbox.smtp.mailtrap.io}
+    port: ${MAIL_PORT:2525}
+    # Notice the fallbacks added here too!
+    username: ${MAIL_USERNAME:21334177a86a15}
+    password: ${MAIL_PASSWORD:dc833c4c3cf8a8}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+mail:
+  from: ${MAIL_FROM:no-reply@odysseyai.com}
 
 jwt:
   secret: 3cfa76ef14937c1c0ea519f8fcab58e9feef74de3828c68ff8e3e7f41fbc8f59
   access-token-expiration-ms: 900000
 
   refresh-token-expiration-ms: 604800000
+
+
+verification:
+  expiration-ms: ${VERIFICATION_TOKEN_EXPIRATION_MS:86400000}
+password-reset:
+  expiration-ms: ${PASSWORD_RESET_TOKEN_EXPIRATION_MS:900000}
+
+static-links:
+  verificationLink: http://localhost:8080/api/auth/verify-email?token=
+  resetPasswordLink: http://localhost:8080/api/auth/reset-password?token=

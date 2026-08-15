@@ -7,5 +7,7 @@ public enum AccountStatus {
 
     SUSPENDED,
 
-    PENDING_VERIFICATION
+    PENDING_VERIFICATION,
+
+    DELETED
 }
