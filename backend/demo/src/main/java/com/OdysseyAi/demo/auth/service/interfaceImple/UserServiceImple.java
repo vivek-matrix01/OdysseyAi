@@ -14,6 +14,8 @@ import com.OdysseyAi.demo.auth.repository.UserRepository;
 import com.OdysseyAi.demo.auth.service.JwtService;
 import com.OdysseyAi.demo.auth.service.RefreshTokenService;
 import com.OdysseyAi.demo.common.exception.customexception.DuplicateResourceException;
+import com.OdysseyAi.demo.common.exception.customexception.InvalidCredentialsException;
+import com.OdysseyAi.demo.common.exception.customexception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -39,7 +41,7 @@ public class UserServiceImple implements UserService {
     private static final Duration ACCOUNT_LOCK_DURATION = Duration.ofMinutes(15);
     private  final AccountService accountService;
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = InvalidCredentialsException.class)
     public LoginResponse login(LoginRequest request) {
 
         try {
@@ -48,10 +50,13 @@ public class UserServiceImple implements UserService {
                             request.getEmail(),
                             request.getPassword()
                     )
+
             );
 
 
             User user = (User) authentication.getPrincipal();
+            if(!user.isEmailVerified()) throw new UnauthorizedException("Email not verified");
+
             user.resetFailedAttempts();
             userRepository.save(user);
 
@@ -115,5 +120,6 @@ public class UserServiceImple implements UserService {
         accountService.sendVerificationEmail(savedUser);
         return userMapper.toResponse(savedUser);
     }
+
 
 }

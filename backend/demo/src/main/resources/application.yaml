@@ -24,10 +24,10 @@ spring:
         format_sql: true
 
   mail:
-    # Notice the :sandbox.smtp.mailtrap.io added here!
+
     host: ${MAIL_HOST:sandbox.smtp.mailtrap.io}
     port: ${MAIL_PORT:2525}
-    # Notice the fallbacks added here too!
+
     username: ${MAIL_USERNAME:21334177a86a15}
     password: ${MAIL_PASSWORD:dc833c4c3cf8a8}
     properties:

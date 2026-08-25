@@ -1,0 +1,14 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+  mail:
+    host: localhost
+    port: 2525
+    username: test
+    password: test
+
+  docker:
+    compose:
+      enabled: false

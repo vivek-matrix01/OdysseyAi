@@ -4,6 +4,7 @@ import com.OdysseyAi.demo.common.exception.customexception.*;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,8 +25,8 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(ex, HttpStatus.UNAUTHORIZED, request);
     }
 
-    // 403 FORBIDDEN (Authorization failures)
-    @ExceptionHandler(ForbiddenException.class)
+    // 403 FORBIDDEN (Spring Security Method-Level failures)
+    @ExceptionHandler({ForbiddenException.class,AccessDeniedException.class})
     public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex, HttpServletRequest request) {
         return buildErrorResponse(ex, HttpStatus.FORBIDDEN, request);
     }
