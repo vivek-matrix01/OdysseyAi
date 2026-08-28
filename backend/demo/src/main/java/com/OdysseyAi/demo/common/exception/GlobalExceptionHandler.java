@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class GlobalExceptionHandler {
 
     // 400 BAD REQUEST
-    @ExceptionHandler(BadRequestException.class)
+    @ExceptionHandler({BadRequestException.class,InvalidTripStateException.class})
     public ResponseEntity<ApiError> handleBadRequest(BadRequestException ex, HttpServletRequest request) {
         return buildErrorResponse(ex, HttpStatus.BAD_REQUEST, request);
     }
@@ -24,6 +24,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleUnauthorized(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(ex, HttpStatus.UNAUTHORIZED, request);
     }
+
+
 
     // 403 FORBIDDEN (Spring Security Method-Level failures)
     @ExceptionHandler({ForbiddenException.class,AccessDeniedException.class})
