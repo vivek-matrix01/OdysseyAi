@@ -5,7 +5,7 @@ import com.OdysseyAi.demo.trip.dto.request.CreateTripRequest;
 import com.OdysseyAi.demo.trip.dto.request.UpdateTripRequest;
 import com.OdysseyAi.demo.trip.dto.response.TripResponse;
 
-import com.OdysseyAi.demo.trip.enitity.Trip;
+import com.OdysseyAi.demo.trip.entity.Trip;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;

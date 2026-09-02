@@ -3,16 +3,22 @@ package com.OdysseyAi.demo.trip.service;
 
 import com.OdysseyAi.demo.auth.entity.User;
 import com.OdysseyAi.demo.auth.interfaces.AuthenticationFacade;
+import com.OdysseyAi.demo.common.enums.TripStatus;
 import com.OdysseyAi.demo.common.exception.customexception.BadRequestException;
 import com.OdysseyAi.demo.common.exception.customexception.ResourceNotFoundException;
 import com.OdysseyAi.demo.trip.dto.request.CreateTripRequest;
 import com.OdysseyAi.demo.trip.dto.request.UpdateTripRequest;
+import com.OdysseyAi.demo.trip.dto.response.PageResponse;
 import com.OdysseyAi.demo.trip.dto.response.TripResponse;
-import com.OdysseyAi.demo.trip.enitity.Trip;
+import com.OdysseyAi.demo.trip.entity.Trip;
 import com.OdysseyAi.demo.trip.mapper.TripMapper;
 import com.OdysseyAi.demo.trip.repository.TripRepository;
 import com.OdysseyAi.demo.trip.interfaces.TripService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,15 +54,115 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TripResponse> getMyTrips() {
+    public PageResponse<TripResponse> getMyTrips(
+            int page,
+            int size,
+            String sortBy,
+            String direction,
+            TripStatus status,
+            String destination
+    ) {
 
         User currentUser = authenticationFacade.getCurrentUser();
 
-        return tripRepository
-                .findAllByUserOrderByCreatedAtDesc(currentUser)
-                .stream()
-                .map(tripMapper::toResponse)
-                .toList();
+        if (page < 0) {
+            throw new BadRequestException(
+                    "Page number cannot be negative."
+            );
+        }
+
+        if (size < 1 || size > 100) {
+            throw new BadRequestException(
+                    "Page size must be between 1 and 100."
+            );
+        }
+
+        if (sortBy == null || sortBy.isBlank()) {
+            sortBy = "createdAt";
+        }
+
+        if (direction == null || direction.isBlank()) {
+            direction = "desc";
+        }
+
+        String validatedSortField = validateSortField(sortBy);
+
+        Sort.Direction sortDirection;
+
+        try {
+            sortDirection = Sort.Direction.fromString(direction);
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException(
+                    "Sort direction must be either 'asc' or 'desc'."
+            );
+        }
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortDirection, validatedSortField)
+        );
+
+        boolean hasStatus = status != null;
+
+        boolean hasDestination =
+                destination != null &&
+                        !destination.isBlank();
+
+        Page<Trip> tripPage;
+
+        if (hasStatus && hasDestination) {
+
+            tripPage =
+                    tripRepository.findAccessibleTripsByStatusAndDestination(
+                            currentUser,
+                            status,
+                            destination.trim(),
+                            pageable
+                    );
+
+        } else if (hasStatus) {
+
+            tripPage =
+                    tripRepository.findAccessibleTripsByStatus(
+                            currentUser,
+                            status,
+                            pageable
+                    );
+
+        } else if (hasDestination) {
+
+            tripPage =
+                    tripRepository.findAccessibleTripsByDestination(
+                            currentUser,
+                            destination.trim(),
+                            pageable
+                    );
+
+        } else {
+
+            tripPage =
+                    tripRepository.findAccessibleTrips(
+                            currentUser,
+                            pageable
+                    );
+        }
+
+        List<TripResponse> content =
+                tripPage.getContent()
+                        .stream()
+                        .map(tripMapper::toResponse)
+                        .toList();
+
+        return PageResponse.<TripResponse>builder()
+                .content(content)
+                .page(tripPage.getNumber())
+                .size(tripPage.getSize())
+                .totalElements(tripPage.getTotalElements())
+                .totalPages(tripPage.getTotalPages())
+                .first(tripPage.isFirst())
+                .last(tripPage.isLast())
+                .build();
     }
 
     @Override
@@ -79,6 +185,7 @@ public class TripServiceImpl implements TripService {
 
         trip.start();
     }
+
     @Override
     public void completeTrip(Long tripId) {
 
@@ -88,6 +195,7 @@ public class TripServiceImpl implements TripService {
 
         trip.complete();
     }
+
     @Override
     public void cancelTrip(Long tripId) {
 
@@ -97,6 +205,7 @@ public class TripServiceImpl implements TripService {
 
         trip.cancel();
     }
+
     @Override
     public TripResponse updateMyTrip(
             Long tripId,
@@ -136,6 +245,7 @@ public class TripServiceImpl implements TripService {
                         )
                 );
     }
+
     private void validateTripDates(
             LocalDate startDate,
             LocalDate endDate) {
@@ -145,5 +255,23 @@ public class TripServiceImpl implements TripService {
                     "Trip end date cannot be before the start date."
             );
         }
+    }
+
+    private String validateSortField(String sortBy) {
+
+        return switch (sortBy) {
+
+            case "createdAt",
+                 "updatedAt",
+                 "title",
+                 "destination",
+                 "startDate",
+                 "endDate",
+                 "status" -> sortBy;
+
+            default -> throw new BadRequestException(
+                    "Invalid sort field."
+            );
+        };
     }
 }

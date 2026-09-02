@@ -1,8 +1,10 @@
 package com.OdysseyAi.demo.trip.controller;
 
 import com.OdysseyAi.demo.common.api.ApiResponse;
+import com.OdysseyAi.demo.common.enums.TripStatus;
 import com.OdysseyAi.demo.trip.dto.request.CreateTripRequest;
 import com.OdysseyAi.demo.trip.dto.request.UpdateTripRequest;
+import com.OdysseyAi.demo.trip.dto.response.PageResponse;
 import com.OdysseyAi.demo.trip.dto.response.TripResponse;
 import com.OdysseyAi.demo.trip.interfaces.TripService;
 import jakarta.validation.Valid;
@@ -36,21 +38,34 @@ public class TripController {
                                 .build()
                 );
     }
-
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TripResponse>>> getMyTrips() {
+    public ResponseEntity<ApiResponse<PageResponse<TripResponse>>> getMyTrips(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(required = false) TripStatus status,
+            @RequestParam(required = false) String destination
+    ) {
 
-        List<TripResponse> trips = tripService.getMyTrips();
+        PageResponse<TripResponse> trips =
+                tripService.getMyTrips(
+                        page,
+                        size,
+                        sortBy,
+                        direction,
+                        status,
+                        destination
+                );
 
         return ResponseEntity.ok(
-                ApiResponse.<List<TripResponse>>builder()
+                ApiResponse.<PageResponse<TripResponse>>builder()
                         .status(HttpStatus.OK.value())
                         .message("Trips retrieved successfully.")
                         .data(trips)
                         .build()
         );
     }
-
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<TripResponse>> getMyTrip(
             @PathVariable Long id) {

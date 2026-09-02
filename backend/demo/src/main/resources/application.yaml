@@ -17,11 +17,16 @@ spring:
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
+
     properties:
       hibernate:
+        jdbc:
+          batch_size: 100
+        default_batch_fetch_size: 100
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+
 
   mail:
 
@@ -55,3 +60,20 @@ password-reset:
 static-links:
   verificationLink: http://localhost:8080/api/auth/verify-email?token=
   resetPasswordLink: http://localhost:8080/api/auth/reset-password?token=
+
+groq:
+  api-key: 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
+  base-url: https://api.groq.com/openai/v1
+  model: openai/gpt-oss-20b
+
+google:
+  maps:
+    api-key: AIzaSyB69U_iAVeFePfxfw2-uxcnvOVtmWwEPxw
+    places-base-url: https://places.googleapis.com/v1
+    routes-base-url: https://routes.googleapis.com
+transport:
+  pricing:
+    driving-cost-per-km: 15
+serpapi:
+  api-key: 8abb1ffc22d6f7399cb26fd1856fd37adb2ea2d8c44d25e8d91112ff0e5e4dba
+  base-url: https://serpapi.com/search.json

@@ -1,4 +1,4 @@
-package com.OdysseyAi.demo.trip.enitity;
+package com.OdysseyAi.demo.trip.entity;
 
 import com.OdysseyAi.demo.auth.entity.User;
 import com.OdysseyAi.demo.common.entity.BaseEntity;

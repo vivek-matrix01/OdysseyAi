@@ -51,6 +51,7 @@ public class User extends BaseEntity implements UserDetails {
     private boolean emailVerified;
 
     @Column(nullable = false)
+    @Builder.Default
     private int failedLoginAttempts = 0;
 
     private java.time.Instant accountLockedUntil;
