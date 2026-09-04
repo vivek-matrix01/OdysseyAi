@@ -13,4 +13,6 @@ public class UpdateProfileRequest {
 
     @NotBlank(message = "Last name cannot be blank")
     private String lastName;
+
+    private String profilePicture;
 }

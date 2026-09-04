@@ -1,0 +1,183 @@
+# Backend Changes Log
+
+## 1. `GoogleRoutesClient.java` (src/main/java/com/OdysseyAi/demo/travel/client/GoogleRoutesClient.java)
+- **What was changed**: Modified `parseResponse` method.
+- **Why**: When Google Routes API returned no route (e.g. asking for a Transit route where no transit exists), it would throw an `IllegalStateException("Google Routes returned no route.")`. This crashed the entire recommendation API flow. 
+- **Fix**: Replaced the exception with a fallback mechanism that returns an empty `RouteData` object (duration=0, distance=0, polyline="") so the AI builder can gracefully ignore missing transit options instead of crashing.
+
+## 2. `SecurityFiltersConfig.java` (src/main/java/com/OdysseyAi/demo/auth/configuration/SecurityFiltersConfig.java)
+- **What was changed**: Modified `requestMatchers` in `securityFilterChain`.
+- **Why**: Swagger API was failing to load the remote configuration because the `/v3/api-docs/**` endpoints were blocked by Spring Security.
+- **Fix**: Added `"/v3/api-docs/**", "/swagger-resources/**", "/webjars/**"` to the `permitAll()` list.
+
+- Deleted GooglePlacePhotoClient.java and created SerpApiPlacePhotoClient.java to fetch place images via SerpApi Google Local API instead of Google Places API.
+- Updated PlacePhotoClient.java interface from getPhotoUrl(photoName, ...) to getPhotoUrls(query).
+- Updated PlaceRecommendationEnricher.java to use the new SerpApiPlacePhotoClient.java.
+
+
+- Fixed SerpApiPlacePhotoClient.java RestClient instantiation to avoid Spring bean injection error.
+
+
+- Added deleteByTrip methods to ItineraryRepository, ExpenseRepository, and TripMemberRepository.
+- Updated TripServiceImpl.java deleteMyTrip method to delete associated Itinerary, Expenses, and TripMembers prior to deleting the Trip, resolving PostgreSQL FK constraint violation.
+
+
+- Increased GooglePlacesClient maxResultCount from 10 to 20.
+- Increased RecommendationPromptBuilder places limit from 10 to 15, and hotels limit from 5 to 8 to provide more options.
+
+
+- Updated RecommendationTransportEstimator.java to calculate road distance transport costs dynamically using DRIVE mode distance in meters multiplied by drivingCostPerKm (default 15 INR/km).
+- Updated HotelRecommendationEnricher.java to retain and append all available hotels from SerpApi instead of discarding non-selected ones, preventing artificial filtering.
+- Updated PlaceRecommendationEnricher.java to retain and append all available tourist places from Google Places instead of discarding non-selected ones.
+- Updated RecommendationPromptBuilder.java to instruct the AI to recommend at least 8-12 places and 5-8 hotels.
+- Updated SerpApiHotelClient.java to parse up to 20 hotels instead of capping at 10.
+
+
+- Fixed compilation error in PlaceRecommendationEnricher.java line 143 (place.getMinPrice() is already a BigDecimal, removed redundant BigDecimal.valueOf call).
+
+- Created `RouteSegmentResponse.java` (src/main/java/com/OdysseyAi/demo/ai/dto/response/RouteSegmentResponse.java): DTO carrying originName, destinationName, distanceKm, durationMinutes, and estimatedCost for each leg of the journey.
+- Updated `TripRecommendationResponse.java`: Added `totalDistanceKm`, `petrolVehicleCost`, `dieselVehicleCost`, and `routeSegments` list.
+- Updated `RecommendationTransportEstimator.java`:
+  - Computes exact driving distance between consecutive tourist attractions using Google Routes with a Haversine * 1.35 road tortuosity fallback so distance is never zero or empty.
+  - Builds individual `RouteSegmentResponse` items for each leg (Point A to Point B) with distance in KM, travel duration in minutes, and estimated leg cost.
+  - Calculates benchmark Petrol Vehicle Cost (at ~₹100/L petrol and 13-14 km/L -> ~₹14.00/km) and Diesel Vehicle Cost (at ~₹90/L diesel and 16 km/L -> ~₹11.50/km).
+- Updated `PlaceRecommendationEnricher.java`: Added `getEstimatedPlaceCost` categorization helper to assign realistic activity/entrance fees (₹150 - ₹450) when Google Places minPrice is null or 0, preventing attractions from showing 0.
+- Updated `HotelRecommendationEnricher.java`: Added `resolveNightlyPrice` and `resolveTotalPrice` to ensure hotel totalCost and nightly costs are never null or 0.
+- Updated `TravelDataServiceImpl.java`: Increased Google Places search radius from 10km to 25km and added search for `historical_landmark` alongside `tourist_attraction` and `restaurant`, with deduplication by ID to capture all major sights across the region.
+- Updated `PlaceRecommendationEnricher.java`: Increased maximum retained places limit from 16 to 50 so that every place returned by Google Places is available for manual selection.
+- Updated `HotelRecommendationEnricher.java`: Increased maximum retained hotels limit from 12 to 30 so all hotels are available.
+- Updated `TripRecommendationResponse.java`: Added `potentialProblems` list.
+- Updated `RecommendationPromptBuilder.java`: Added Rule 19 to instruct the LLM to analyze destination weather, seasonality, distances, and budget to predict 3 to 5 realistic potential problems/risks with advice on how to mitigate them.
+- Adjusted SerpApi photo lookups in `PlaceRecommendationEnricher.java` to a maximum of 18 places (+ 1 call for hotels = max 19 calls total per trip generation, staying strictly within the user's budget of 20 calls).
+- Optimized distance calculation workflow:
+  - In `TravelDataServiceImpl.java`: Removed upfront candidate route calculation during discovery, avoiding wasteful Google Routes API calls on unselected places.
+  - In `TripRecommendationServiceImpl.java`: Removed upfront transport estimation across candidate places.
+  - In `RecommendationPromptBuilder.java`: Updated rules 4 and 5 to exclude distance as a filtering attribute for choosing places, focusing purely on interest matching and ratings.
+- In `AiRecommendation.tsx`: Removed road travel distance, fuel price, and road transport cost from the choosing screen completely as per user request. When choosing places, dynamic total is strictly (Hotel + Places).
+- In `ItineraryRouteService.java`:
+  - Added Haversine * 1.35 road tortuosity fallback so that if Google Routes API fails or is unavailable, driving route distance, duration, and road fares are never dropped or empty.
+  - Enhanced place name matching with multi-word substring and token overlap to ensure activities reliably map to coordinates.
+- In `AiGenerationServiceImpl.java`:
+  - Added activity cost fallback so that when AI generates activities with 0 or null cost, realistic entry/activity fees (₹200-₹300) are assigned.
+  - At trip creation time, calculates the itinerary road distance across all scheduled stops and assigns the petrol transport cost (~₹14/km) to `estimatedTransportCost` and persists it into the itinerary.
+- In `ItineraryServiceImpl.java`:
+  - In `getItinerary(tripId)`, added dynamic cost reconciliation: if an existing trip (e.g. trip 17) has 0 activity or transport costs saved in DB, it dynamically computes the activity sum and road transport cost from the itinerary stops, adds them to hotel cost, and returns the accurate dynamic total amount.
+- In `HotelRecommendationEnricher.java`:
+  - Added `resolveHotelImages` and `getBackupHotelImages` methods to provide diverse, curated high-resolution resort and hotel backup images whenever SerpApi returns no images or empty image arrays for a hotel.
+- In `PlaceRecommendationEnricher.java`:
+  - Added `getBackupPlaceImages` method providing diverse, category-specific high-resolution travel backup images (beaches, heritage/temples, waterfalls/nature, dining, general sightseeing) whenever SerpApi returns no images or when the SerpApi photo lookup quota limit is reached.
+- In `User.java`:
+  - Added `@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)` to `password` attribute so serialized user profiles returned by `@GetMapping("/me")` never expose hashed credentials in client responses.
+- In `Profile.tsx`:
+  - Connected `GET /api/users/me` (`UserControllerService.getCurrentProfile`), `PUT /api/users/me` (`UserControllerService.updateProfile`), and `PUT /api/users/me/change-password` (`UserControllerService.changePassword`).
+  - Added Admin Privileges Quick Action Banner when logged-in user has role `ADMIN`, linking directly to Admin Console.
+  - Implemented resilient fallback error message resolution (`getErrorMessage`) handling both OpenAPI error bodies and Axios error responses.
+- In `AdminDashboard.tsx`:
+  - Connected all 6 endpoints of `AdminController`:
+    1. `GET /api/admin/users`: User list retrieval with real-time filtering, search, and system statistics.
+    2. `GET /api/admin/users/{id}`: Detailed user account inspection (failed attempts, lock duration, creation dates).
+    3. `PUT /api/admin/users/{id}/role`: Toggle authorization roles between `USER` and `ADMIN`.
+    4. `PUT /api/admin/users/{id}/lock`: Suspend and lock user account.
+    5. `PUT /api/admin/users/{id}/unlock`: Clear lock state and restore user account to active.
+    6. `DELETE /api/admin/users/{id}`: Permanently purge user account.
+  - Added Administrator Profile Card banner to the Admin Console displaying current session administrator identity, role, and direct navigation to their personal profile.
+  - Integrated direct role-change, lock/unlock, and purge action buttons directly inside the User Details Modal.
+- In `Dashboard.tsx`:
+  - Upgraded trip cards with destination-aware, high-resolution photography with smart categorization (beaches, mountain valleys, heritage palaces, backwaters, city skylines, and scenic road trips).
+  - Added smooth hover zoom effect, dark gradient overlays for legibility, duration badges, and `onError` image fallback handlers.
+- Trip Members & Permission Model (Owner, Editor, Viewer):
+  - In `TripRepository.java`:
+    - Added `findAccessibleTripById(@Param("tripId") Long tripId, @Param("user") User user)` supporting trips where user is owner or invited member.
+  - In `TripResponse.java` & `TripMapper.java`:
+    - Added `ownerId`, `ownerEmail`, and `ownerName` fields mapped from `trip.getUser()` to expose trip ownership details to clients.
+  - In `TripServiceImpl.java`:
+    - Updated `getMyTrip(tripId)` to use `findAccessibleTrip` so non-owner collaborators (Editors & Viewers) can view trip details without 404 errors.
+    - Added `tripAccessService.requireEditor(trip, currentUser)` to `startTrip`, `completeTrip`, `cancelTrip`, and `updateMyTrip`.
+    - Added `tripAccessService.requireOwner(trip, currentUser)` to `deleteMyTrip` so only trip owners can delete a trip.
+  - In `TripMemberServiceImpl.java`:
+    - Updated `getMembers(tripId)` to use `findAccessibleTripById` so all participants (Owner, Editors, Viewers) can view the member roster.
+    - Updated `removeMember(tripId, memberId)` to allow both Owner removal of members and individual members leaving a trip, throwing `ForbiddenException` for unauthorized removals.
+    - Hardened case-insensitivity on email address lookup in `addMember`.
+  - In `TripDetails.tsx`:
+    - Added **Trip Members & Collaboration** interactive section.
+    - Provided the Trip Owner with an invite form to type a user's email, select role (`EDITOR` or `VIEWER`), and invite them via `POST /api/trips/{tripId}/members`.
+    - Handled all errors gracefully: user not found, already a member, inviting self/owner, with descriptive toasts and UI alerts.
+    - Provided role switcher (toggle `EDITOR` <-> `VIEWER`) via `PUT /api/trips/{tripId}/members/{memberId}/role?role=...` for owners.
+    - Provided member removal modal (and "Leave Trip" for non-owner members) via `DELETE /api/trips/{tripId}/members/{memberId}`.
+    - Enforced permission model in UI: Viewers have read-only view with an alert banner; "Edit Trip", "Delete Trip", and activity removals are hidden for Viewers. Owners have exclusive delete and member management privileges.
+- Unsupported Location Handling (Google Places & SerpApi):
+  - Created `UnsupportedLocationException.java` in `com.OdysseyAi.demo.common.exception.customexception`.
+  - Registered `UnsupportedLocationException.class` in `GlobalExceptionHandler.java` mapping directly to HTTP 400 Bad Request with message `"Sorry, we do not provide services at this location."`.
+  - In `GooglePlacesClient.java`:
+    - Validated destination input and checked for empty or unresolvable place array from Google Places API `/places:searchText`.
+    - Throws `UnsupportedLocationException("Sorry, we do not provide services at this location.")` on unresolvable destinations or missing coordinates.
+  - In `TravelDataServiceImpl.java`:
+    - Checked `places.isEmpty()` after querying tourist attractions, historical landmarks, and restaurants; throws `UnsupportedLocationException` if no tourist places can be found for the queried location.
+  - In `SerpApiHotelClient.java`:
+    - Handled location errors returned in SerpApi's response (e.g. unknown location, not found, couldn't find, no results), throwing `UnsupportedLocationException("Sorry, we do not provide services at this location.")`.
+  - In `TripRecommendationServiceImpl.java` & `AiGenerationServiceImpl.java`:
+    - Propagated `UnsupportedLocationException` without converting it into generic internal server errors.
+  - In `AiRecommendation.tsx`:
+    - Added error banner and toast notifications displaying `"Sorry, we do not provide services at this location."` directly to the traveler when an unserviced location is entered.
+- Frontend Password Visibility Toggle:
+  - In `Input.tsx`:
+    - Added built-in show/hide eye toggle (`Eye` and `EyeOff` icons) for all `type="password"` fields.
+    - Handled toggle state, right padding (`pr-10`), and `tabIndex={-1}` for smooth keyboard accessibility across Login, Sign-up/Register, and Profile password forms.
+- Landing Page Implementation:
+  - Created `LandingPage.tsx` (`frontend/src/pages/LandingPage.tsx`) with Hero section, live trip card mockup, core capabilities, 3-step workflow, featured destination cards with curated photography, 3-tier team permission showcase, and responsive CTAs.
+  - Mounted `LandingPage` at root route (`/`) in `App.tsx`.
+  - Upgraded `Layout.tsx` to support edge-to-edge styling on the landing page and added a rich multi-column footer with product navigation and branding.
+- BorderGlow Interactive Edge-Lighting Effect:
+  - Created `BorderGlow.tsx` and `BorderGlow.css` (`frontend/src/components/ui/BorderGlow.*`).
+  - Implemented interactive pointer-tracking edge sensitivity, conic-gradient beam, radial glow bloom, color map, and smooth sweep animations.
+  - Applied `BorderGlow` across all application cards:
+    - `Dashboard.tsx`: All user trip cards in the dashboard grid.
+    - `LandingPage.tsx`: Hero preview mockup card, 6 Core Capability cards, 6 Featured Destination cards, and 3 Team Permission cards (Owner, Editor, Viewer).
+    - `AiRecommendation.tsx`: Verified hotel recommendation cards and tourist attraction / place cards.
+- Increased SerpApi Hotels Fetch Limit:
+  - In `SerpApiHotelClient.java`: Increased result extraction limit from 20 to 40 (`Math.min(40, propertiesNode.size())`) so that up to 40 hotels returned by SerpApi are processed.
+  - In `HotelRecommendationEnricher.java`: Increased enriched hotels collection cap from 30 to 40 (`if (enrichedHotels.size() >= 40)`) ensuring all 40 hotels are passed through to the recommendation response.
+- Vite Windows Watcher Stability:
+  - Enabled `server.watch.usePolling: true` in `frontend/vite.config.ts` to prevent Windows `EBUSY: resource busy or locked` file watcher crashes on image assets.
+- Profile Picture & Travel Persona Avatar Selection:
+  - Added `profilePicture` attribute to `User` entity, `UpdateProfileRequest`, `UserProfileResponse`, `UserSummaryResponse`, and `UserDetailResponse`.
+  - Updated `AccountServiceImpl.java` to persist chosen `profilePicture` across updates.
+  - Extracted and mapped the 5 curated profile photos in `frontend/src/assets/profile/` (`charlesdeluvio-K4mSJ7kc0As-unsplash.jpg`, `gary-bendig-6GMq7AGxNbE-unsplash.jpg`, `mateusz-d-BWjuyBJEHdQ-unsplash (1).jpg`, `ricky-kharawala-adK3Vu70DEQ-unsplash.jpg`, `tuqa-nabi-uhnZZUaTIOs-unsplash.jpg`) to interactive travel persona options in `frontend/src/constants/profileAvatars.ts`.
+  - Added interactive "Choose Profile Picture" gallery in `Profile.tsx` with `BorderGlow` selection cards, live header preview, instant apply, and reset-to-initials options.
+  - Integrated active avatar in `Navbar.tsx` (desktop dropdown button, dropdown header, and mobile menu).
+- Expanded AI Travel Planner Choices & Prompt Limits (Safe within 6k token budget):
+  - In `RecommendationPromptBuilder.java`:
+    - Increased `placeCount` cap from 15 to 35 places (`if (placeCount >= 35)`).
+    - Increased `hotels` cap from 8 to 25 hotels (`Math.min(25, hotels.size())`).
+    - Updated Rule 18 instructing the AI to recommend 12 to 16 diverse places (sightseeing, culture, nature, food) and 8 to 12 verified hotels.
+    - Total input prompt size is ~3,300 tokens, safely leaving plenty of headroom below the 6k token limit.
+  - In `PromptBuilder.java`:
+    - Increased `MAX_ATTRACTIONS` from 5 to 20.
+    - Increased `MAX_RESTAURANTS` from 5 to 15.
+    - Increased `MAX_ROUTES` from 3 to 6.
+    - Enables comprehensive daily itinerary scheduling without running out of real attractions.
+- Comprehensive Mobile Responsiveness Across OdysseyAi:
+  - Fixed viewport and title in `index.html` with theme color and description meta tags.
+  - Added global `overflow-x: hidden`, tap highlight reset, and momentum scroll utility classes in `index.css`.
+  - Added responsive `@media (max-width: 640px)` padding scaling in `BorderGlow.css` to prevent glow bleeding on mobile screen edges.
+  - Upgraded mobile navigation drawer in `Navbar.tsx` with full backdrop blur overlay, 44px+ touch targets, direct "Plan New Trip with AI" button, and profile header.
+  - Transformed `TripDetails.tsx` hero banner from fixed 288px height into flexible `min-h-[280px]` container preventing text/badge overlaps; added responsive timeline flex layouts and expense breakdown grids.
+  - Streamlined `AiRecommendation.tsx` sticky action bar for mobile viewports, enabled horizontal swipeable category pills with hidden scrollbars, and smoothed 1-to-4 column responsive place grids.
+  - Polished responsive card grids and padding across `Dashboard.tsx`, `LandingPage.tsx`, `Profile.tsx`, `AdminDashboard.tsx`, `Login.tsx`, and `Register.tsx`.
+- Destination-Aware Country Fuel Index & Interactive Local Currency Switch:
+  - Created `DestinationCurrencyService.java` with curated benchmark country fuel rates (Japan ¥175/L, USA $0.95/L, Europe €1.80/L, UAE 3.15 AED/L, UK £1.45/L, Thailand 38.5 THB/L, India ₹102/L) and currency metadata.
+  - Connected `FrankfurterCurrencyClient` to dynamically fetch live exchange rates from INR to local destination currencies.
+  - Updated `RecommendationTransportEstimator.java` to compute destination-aware driving costs and populate `localCurrency`, `localCurrencySymbol`, and `exchangeRateFromInr`.
+  - Updated `ItineraryServiceImpl.java` to enrich `ItineraryResponse` with local currency metadata.
+  - Updated `PlaceRecommendationEnricher.java` line 41 to increase `MAX_SERPAPI_PHOTO_LOOKUPS` to 39 (total 40 SerpApi requests max).
+  - Built interactive Currency Toggle Switch `[ ₹ INR | Local Currency ]` on `AiRecommendation.tsx` (Step 2 selection header) and `TripDetails.tsx` (Expense Breakdown), allowing one-click conversion of hotels, places, fuel distance, and total budget into local destination currency.
+- Lucide Icon Replacement (Compass -> MapPinned):
+  - Replaced all instances of `Compass` icon with Lucide `MapPinned` icon across `Navbar.tsx` (brand logo, mobile menu drawer), `Layout.tsx` (footer brand logo), `LandingPage.tsx` (CTA hero banner), and `Dashboard.tsx` (loading spinner).
+  - Created high-res `public/favicon.svg` using the exact Lucide `MapPinned` SVG in teal `rgb(13, 148, 136)` (`#0d9488`).
+  - Linked `favicon.svg` in `index.html` as the browser tab favicon and homepage application icon with matching theme-color `#0d9488`.
+
+
+
+
+
+

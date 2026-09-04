@@ -48,6 +48,21 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     );
 
     Optional<Trip> findByIdAndUser(Long tripId, User currentUser);
+
+    @Query("""
+    SELECT DISTINCT t
+    FROM Trip t
+    LEFT JOIN TripMember tm
+        ON tm.trip = t
+       AND tm.user = :user
+    WHERE t.id = :tripId
+      AND (t.user = :user OR tm.user = :user)
+""")
+    Optional<Trip> findAccessibleTripById(
+            @Param("tripId") Long tripId,
+            @Param("user") User user
+    );
+
     @Query("""
     SELECT DISTINCT t
     FROM Trip t

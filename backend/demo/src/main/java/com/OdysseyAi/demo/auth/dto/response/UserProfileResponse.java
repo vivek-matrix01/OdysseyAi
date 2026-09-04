@@ -29,6 +29,8 @@ public class UserProfileResponse {
 
     private boolean emailVerified;
 
+    private String profilePicture;
+
     private Instant createdAt;
 
 }

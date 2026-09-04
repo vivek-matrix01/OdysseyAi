@@ -102,7 +102,8 @@ public class UserServiceImple implements UserService {
     }
 
 @Override
-    public UserResponse register(RegisterRequest request) {
+    public UserResponse
+register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException(
                     "Email is already registered."

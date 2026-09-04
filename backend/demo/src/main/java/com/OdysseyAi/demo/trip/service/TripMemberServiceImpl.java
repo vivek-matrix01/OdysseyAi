@@ -5,6 +5,7 @@ import com.OdysseyAi.demo.auth.interfaces.AuthenticationFacade;
 import com.OdysseyAi.demo.auth.repository.UserRepository;
 import com.OdysseyAi.demo.common.enums.TripMemberRole;
 import com.OdysseyAi.demo.common.exception.customexception.BadRequestException;
+import com.OdysseyAi.demo.common.exception.customexception.ForbiddenException;
 import com.OdysseyAi.demo.common.exception.customexception.ResourceNotFoundException;
 import com.OdysseyAi.demo.trip.dto.request.AddTripMemberRequest;
 import com.OdysseyAi.demo.trip.dto.response.TripMemberResponse;
@@ -40,22 +41,22 @@ public class TripMemberServiceImpl implements TripMemberService {
         Trip trip = findOwnedTrip(tripId, owner);
 
         User user = userRepository
-                .findUserByEmail(request.getEmail())
+                .findUserByEmail(request.getEmail().trim().toLowerCase())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "User with the provided email was not found."
+                                "User with email '" + request.getEmail() + "' was not found."
                         )
                 );
 
         if (trip.getUser().getId().equals(user.getId())) {
             throw new BadRequestException(
-                    "Trip owner is already a member of the trip."
+                    "The trip owner is already the organizer of this trip."
             );
         }
 
         if (tripMemberRepository.existsByTripAndUser(trip, user)) {
             throw new BadRequestException(
-                    "User is already a member of this trip."
+                    "User '" + request.getEmail() + "' is already a member of this trip."
             );
         }
 
@@ -77,7 +78,8 @@ public class TripMemberServiceImpl implements TripMemberService {
 
         User currentUser = authenticationFacade.getCurrentUser();
 
-        Trip trip = findOwnedTrip(tripId, currentUser);
+        Trip trip = tripRepository.findAccessibleTripById(tripId, currentUser)
+                .orElseThrow(() -> new ResourceNotFoundException("Trip not found."));
 
         return tripMemberRepository
                 .findAllByTrip(trip)
@@ -120,9 +122,10 @@ public class TripMemberServiceImpl implements TripMemberService {
             Long memberId
     ) {
 
-        User owner = authenticationFacade.getCurrentUser();
+        User currentUser = authenticationFacade.getCurrentUser();
 
-        Trip trip = findOwnedTrip(tripId, owner);
+        Trip trip = tripRepository.findAccessibleTripById(tripId, currentUser)
+                .orElseThrow(() -> new ResourceNotFoundException("Trip not found."));
 
         TripMember member =
                 tripMemberRepository
@@ -135,6 +138,15 @@ public class TripMemberServiceImpl implements TripMemberService {
         if (!member.getTrip().getId().equals(trip.getId())) {
             throw new ResourceNotFoundException(
                     "Trip member not found."
+            );
+        }
+
+        boolean isOwner = trip.getUser().getId().equals(currentUser.getId());
+        boolean isSelf = member.getUser().getId().equals(currentUser.getId());
+
+        if (!isOwner && !isSelf) {
+            throw new ForbiddenException(
+                    "Only the trip owner can remove members from this trip."
             );
         }
 

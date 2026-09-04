@@ -29,7 +29,9 @@ import com.OdysseyAi.demo.travel.service.TransportCostService;
 import com.OdysseyAi.demo.travel.service.TripCostService;
 
 import com.OdysseyAi.demo.trip.dto.response.ItineraryResponse;
+import com.OdysseyAi.demo.trip.entity.Activity;
 import com.OdysseyAi.demo.trip.entity.Itinerary;
+import com.OdysseyAi.demo.trip.entity.ItineraryDay;
 import com.OdysseyAi.demo.trip.entity.Trip;
 import com.OdysseyAi.demo.trip.interfaces.TripAccessService;
 import com.OdysseyAi.demo.trip.mapper.ItineraryMapper;
@@ -128,6 +130,10 @@ public class AiGenerationServiceImpl
                             trip,
                             request.getCurrency()
                     );
+
+        } catch (com.OdysseyAi.demo.common.exception.customexception.UnsupportedLocationException ex) {
+
+            throw ex;
 
         } catch (AiGenerationException ex) {
 
@@ -264,6 +270,10 @@ public class AiGenerationServiceImpl
                                     trip,
                                     request.getCurrency()
                             );
+
+        } catch (com.OdysseyAi.demo.common.exception.customexception.UnsupportedLocationException ex) {
+
+            throw ex;
 
         } catch (AiGenerationException ex) {
 
@@ -541,6 +551,19 @@ public class AiGenerationServiceImpl
                 itinerary.assignTrip(trip);
                 itinerary.markGenerated();
 
+                /*
+                 * Enrich activities with realistic costs if AI returned zero or null
+                 */
+                for (ItineraryDay d : itinerary.getDays()) {
+                    if (d.getActivities() != null) {
+                        for (Activity act : d.getActivities()) {
+                            if (act.getEstimatedCost() == null || act.getEstimatedCost().compareTo(BigDecimal.ZERO) <= 0) {
+                                BigDecimal fee = BigDecimal.valueOf(act.getType() == com.OdysseyAi.demo.common.enums.ActivityType.FOOD ? 300 : 200);
+                                act.setEstimatedCost(fee);
+                            }
+                        }
+                    }
+                }
 
                 /*
                  * ------------------------------------------------
@@ -575,7 +598,7 @@ public class AiGenerationServiceImpl
 
                 /*
                  * ------------------------------------------------
-                 * 21. Calculate transport cost
+                 * 21. Calculate transport cost at trip creation time
                  * ------------------------------------------------
                  */
                 BigDecimal estimatedTransportCost =
@@ -583,6 +606,13 @@ public class AiGenerationServiceImpl
                                 .calculateTransportCost(
                                         routeData
                                 );
+
+                if (estimatedTransportCost == null || estimatedTransportCost.compareTo(BigDecimal.ZERO) <= 0) {
+                    if (itineraryLocations != null && itineraryLocations.size() >= 2) {
+                        double estimatedKm = (itineraryLocations.size() - 1) * 14.5;
+                        estimatedTransportCost = BigDecimal.valueOf(Math.round(estimatedKm * 14.0));
+                    }
+                }
 
 
                 /*

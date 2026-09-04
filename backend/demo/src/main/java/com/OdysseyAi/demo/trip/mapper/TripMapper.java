@@ -27,5 +27,8 @@ public interface TripMapper {
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntity(UpdateTripRequest request, @MappingTarget Trip trip);
 
+    @Mapping(target = "ownerId", source = "user.id")
+    @Mapping(target = "ownerEmail", source = "user.email")
+    @Mapping(target = "ownerName", expression = "java(trip.getUser() != null ? ((trip.getUser().getFirstName() != null ? trip.getUser().getFirstName() : \"\") + \" \" + (trip.getUser().getLastName() != null ? trip.getUser().getLastName() : \"\")).trim() : null)")
     TripResponse toResponse(Trip trip);
 }

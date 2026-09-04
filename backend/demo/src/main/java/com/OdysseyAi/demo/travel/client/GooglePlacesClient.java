@@ -1,5 +1,6 @@
 package com.OdysseyAi.demo.travel.client;
 
+import com.OdysseyAi.demo.common.exception.customexception.UnsupportedLocationException;
 import com.OdysseyAi.demo.travel.configuration.GoogleMapsProperties;
 import com.OdysseyAi.demo.travel.dto.DestinationData;
 import com.OdysseyAi.demo.travel.dto.PlaceData;
@@ -30,36 +31,49 @@ public class GooglePlacesClient implements PlacesClient {
             String destination
     ) {
 
-        String response =
-                restClient.post()
-                        .uri(
-                                properties.getPlacesBaseUrl()
-                                        + "/places:searchText"
-                        )
-                        .header(
-                                "X-Goog-Api-Key",
-                                properties.getApiKey()
-                        )
-                        .header(
-                                "X-Goog-FieldMask",
-                                "places.id,"
-                                        + "places.displayName,"
-                                        + "places.formattedAddress,"
-                                        + "places.location"
-                        )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(
-                                """
-                                {
-                                  "textQuery": "%s",
-                                  "pageSize": 1
-                                }
-                                """.formatted(
-                                        escapeJson(destination)
-                                )
-                        )
-                        .retrieve()
-                        .body(String.class);
+        if (destination == null || destination.trim().isBlank()) {
+            throw new UnsupportedLocationException(
+                    "Sorry, we do not provide services at this location."
+            );
+        }
+
+        String response;
+        try {
+            response = restClient.post()
+                    .uri(
+                            properties.getPlacesBaseUrl()
+                                    + "/places:searchText"
+                    )
+                    .header(
+                            "X-Goog-Api-Key",
+                            properties.getApiKey()
+                    )
+                    .header(
+                            "X-Goog-FieldMask",
+                            "places.id,"
+                                    + "places.displayName,"
+                                    + "places.formattedAddress,"
+                                    + "places.location"
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(
+                            """
+                            {
+                              "textQuery": "%s",
+                              "pageSize": 1
+                            }
+                            """.formatted(
+                                    escapeJson(destination.trim())
+                            )
+                    )
+                    .retrieve()
+                    .body(String.class);
+
+        } catch (Exception ex) {
+            throw new UnsupportedLocationException(
+                    "Sorry, we do not provide services at this location."
+            );
+        }
 
         try {
 
@@ -71,9 +85,8 @@ public class GooglePlacesClient implements PlacesClient {
             if (!places.isArray()
                     || places.isEmpty()) {
 
-                throw new IllegalStateException(
-                        "Destination could not be resolved: "
-                                + destination
+                throw new UnsupportedLocationException(
+                        "Sorry, we do not provide services at this location."
                 );
             }
 
@@ -85,6 +98,12 @@ public class GooglePlacesClient implements PlacesClient {
 
             JsonNode location =
                     place.path("location");
+
+            if (!location.has("latitude") || !location.has("longitude")) {
+                throw new UnsupportedLocationException(
+                        "Sorry, we do not provide services at this location."
+                );
+            }
 
             return DestinationData.builder()
                     .placeId(
@@ -110,11 +129,11 @@ public class GooglePlacesClient implements PlacesClient {
                     )
                     .build();
 
+        } catch (UnsupportedLocationException ex) {
+            throw ex;
         } catch (Exception ex) {
-
-            throw new IllegalStateException(
-                    "Failed to resolve destination using Google Places.",
-                    ex
+            throw new UnsupportedLocationException(
+                    "Sorry, we do not provide services at this location."
             );
         }
     }
@@ -155,7 +174,7 @@ public class GooglePlacesClient implements PlacesClient {
                                 """
                                 {
                                   "includedTypes": ["%s"],
-                                  "maxResultCount": 10,
+                                  "maxResultCount": 20,
                                   "locationRestriction": {
                                     "circle": {
                                       "center": {

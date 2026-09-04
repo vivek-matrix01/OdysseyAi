@@ -95,12 +95,24 @@ public class SerpApiHotelClient implements HotelClient {
 
             if (root.has("error")) {
 
-                throw new IllegalStateException(
+                String errorMsg =
                         root.path("error")
-                                .asText(
-                                        "SerpApi returned an error."
-                                )
-                );
+                                .asText("SerpApi returned an error.");
+                String lower = errorMsg.toLowerCase();
+
+                if (lower.contains("location")
+                        || lower.contains("not found")
+                        || lower.contains("couldn't find")
+                        || lower.contains("unknown location")
+                        || lower.contains("invalid location")
+                        || lower.contains("no results")) {
+
+                    throw new com.OdysseyAi.demo.common.exception.customexception.UnsupportedLocationException(
+                            "Sorry, we do not provide services at this location."
+                    );
+                }
+
+                throw new IllegalStateException(errorMsg);
             }
 
             JsonNode propertiesNode =
@@ -115,11 +127,11 @@ public class SerpApiHotelClient implements HotelClient {
 
             /*
              * Limit the result we keep in our application.
-             * We don't need 20+ hotels for recommendation.
+             * Up to 40 hotels for recommendation.
              */
             int limit =
                     Math.min(
-                            10,
+                            40,
                             propertiesNode.size()
                     );
 
@@ -135,6 +147,8 @@ public class SerpApiHotelClient implements HotelClient {
 
             return hotels;
 
+        } catch (com.OdysseyAi.demo.common.exception.customexception.UnsupportedLocationException ex) {
+            throw ex;
         } catch (Exception ex) {
 
             throw new IllegalStateException(

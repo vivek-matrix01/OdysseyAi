@@ -1,10 +1,10 @@
 package com.OdysseyAi.demo.travel.interfaces;
 
+import java.util.List;
+
 public interface PlacePhotoClient {
 
-    String getPhotoUrl(
-            String photoName,
-            int maxWidthPx,
-            int maxHeightPx
+    List<String> getPhotoUrls(
+            String query
     );
 }

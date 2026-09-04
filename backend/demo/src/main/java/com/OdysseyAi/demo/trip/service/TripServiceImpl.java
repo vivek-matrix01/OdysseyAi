@@ -12,6 +12,9 @@ import com.OdysseyAi.demo.trip.dto.response.PageResponse;
 import com.OdysseyAi.demo.trip.dto.response.TripResponse;
 import com.OdysseyAi.demo.trip.entity.Trip;
 import com.OdysseyAi.demo.trip.mapper.TripMapper;
+import com.OdysseyAi.demo.trip.repository.ExpenseRepository;
+import com.OdysseyAi.demo.trip.repository.ItineraryRepository;
+import com.OdysseyAi.demo.trip.repository.TripMemberRepository;
 import com.OdysseyAi.demo.trip.repository.TripRepository;
 import com.OdysseyAi.demo.trip.interfaces.TripService;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +34,12 @@ import java.util.List;
 public class TripServiceImpl implements TripService {
 
     private final TripRepository tripRepository;
+    private final ItineraryRepository itineraryRepository;
+    private final ExpenseRepository expenseRepository;
+    private final TripMemberRepository tripMemberRepository;
     private final TripMapper tripMapper;
     private final AuthenticationFacade authenticationFacade;
+    private final com.OdysseyAi.demo.trip.interfaces.TripAccessService tripAccessService;
 
     @Override
     public TripResponse createTrip(CreateTripRequest request) {
@@ -171,7 +178,7 @@ public class TripServiceImpl implements TripService {
 
         User currentUser = authenticationFacade.getCurrentUser();
 
-        Trip trip = findMyTrip(tripId, currentUser);
+        Trip trip = findAccessibleTrip(tripId, currentUser);
 
         return tripMapper.toResponse(trip);
     }
@@ -181,7 +188,8 @@ public class TripServiceImpl implements TripService {
 
         User currentUser = authenticationFacade.getCurrentUser();
 
-        Trip trip = findMyTrip(tripId, currentUser);
+        Trip trip = findAccessibleTrip(tripId, currentUser);
+        tripAccessService.requireEditor(trip, currentUser);
 
         trip.start();
     }
@@ -191,7 +199,8 @@ public class TripServiceImpl implements TripService {
 
         User currentUser = authenticationFacade.getCurrentUser();
 
-        Trip trip = findMyTrip(tripId, currentUser);
+        Trip trip = findAccessibleTrip(tripId, currentUser);
+        tripAccessService.requireEditor(trip, currentUser);
 
         trip.complete();
     }
@@ -201,7 +210,8 @@ public class TripServiceImpl implements TripService {
 
         User currentUser = authenticationFacade.getCurrentUser();
 
-        Trip trip = findMyTrip(tripId, currentUser);
+        Trip trip = findAccessibleTrip(tripId, currentUser);
+        tripAccessService.requireEditor(trip, currentUser);
 
         trip.cancel();
     }
@@ -218,7 +228,8 @@ public class TripServiceImpl implements TripService {
 
         User currentUser = authenticationFacade.getCurrentUser();
 
-        Trip trip = findMyTrip(tripId, currentUser);
+        Trip trip = findAccessibleTrip(tripId, currentUser);
+        tripAccessService.requireEditor(trip, currentUser);
 
         tripMapper.updateEntity(request, trip);
 
@@ -231,6 +242,12 @@ public class TripServiceImpl implements TripService {
         User currentUser = authenticationFacade.getCurrentUser();
 
         Trip trip = findMyTrip(tripId, currentUser);
+        tripAccessService.requireOwner(trip, currentUser);
+
+        // Delete child relationships to avoid Foreign Key constraint violations in database
+        itineraryRepository.deleteByTrip(trip);
+        expenseRepository.deleteByTrip(trip);
+        tripMemberRepository.deleteByTrip(trip);
 
         tripRepository.delete(trip);
     }
@@ -239,6 +256,17 @@ public class TripServiceImpl implements TripService {
 
         return tripRepository
                 .findByIdAndUser(tripId, currentUser)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Trip not found."
+                        )
+                );
+    }
+
+    private Trip findAccessibleTrip(Long tripId, User currentUser) {
+
+        return tripRepository
+                .findAccessibleTripById(tripId, currentUser)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Trip not found."

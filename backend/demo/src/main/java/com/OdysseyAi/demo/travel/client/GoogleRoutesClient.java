@@ -108,9 +108,14 @@ public class GoogleRoutesClient implements RoutesClient {
             if (route.isMissingNode()
                     || route.isEmpty()) {
 
-                throw new IllegalStateException(
-                        "Google Routes returned no route."
-                );
+                // Return a fallback/empty RouteData instead of crashing
+                return RouteData.builder()
+                        .origin(originName)
+                        .destination(destinationName)
+                        .travelMode(travelMode)
+                        .durationSeconds(0L)
+                        .distanceMeters(0L)
+                        .build();
             }
 
             String duration =

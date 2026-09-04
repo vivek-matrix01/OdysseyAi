@@ -29,6 +29,8 @@ public class UserDetailResponse {
 
     private boolean emailVerified;
 
+    private String profilePicture;
+
     private int failedLoginAttempts;
 
     private Instant accountLockedUntil;

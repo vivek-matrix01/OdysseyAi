@@ -203,6 +203,9 @@ public class AccountServiceImpl implements AccountService {
     public void updateProfile(User currentUser, UpdateProfileRequest request) {
         currentUser.setFirstName(request.getFirstName());
         currentUser.setLastName(request.getLastName());
+        if (request.getProfilePicture() != null) {
+            currentUser.setProfilePicture(request.getProfilePicture());
+        }
         userRepository.save(currentUser);
     }
 

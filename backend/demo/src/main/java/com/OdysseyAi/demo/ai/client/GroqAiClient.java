@@ -183,7 +183,7 @@ public class GroqAiClient implements AiClient {
 
         requestBody.put(
                 "max_completion_tokens",
-                4000
+                6000
         );
 
         requestBody.put(

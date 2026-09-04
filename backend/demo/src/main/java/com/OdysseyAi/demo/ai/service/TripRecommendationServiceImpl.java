@@ -5,6 +5,7 @@ import com.OdysseyAi.demo.ai.dto.response.TripRecommendationResponse;
 import com.OdysseyAi.demo.ai.interfaces.AiClient;
 import com.OdysseyAi.demo.ai.interfaces.TripRecommendationService;
 import com.OdysseyAi.demo.common.exception.customexception.BadRequestException;
+import com.OdysseyAi.demo.common.exception.customexception.UnsupportedLocationException;
 import com.OdysseyAi.demo.travel.dto.HotelData;
 import com.OdysseyAi.demo.travel.dto.PlaceData;
 import com.OdysseyAi.demo.travel.dto.TravelContext;
@@ -57,6 +58,12 @@ public class TripRecommendationServiceImpl
         List<PlaceData> places =
                 travelContext.getPlaces();
 
+        if (places == null || places.isEmpty()) {
+            throw new UnsupportedLocationException(
+                    "Sorry, we do not provide services at this location."
+            );
+        }
+
         List<HotelData> hotels =
                 List.of();
 
@@ -75,6 +82,8 @@ public class TripRecommendationServiceImpl
                                 request.getCurrency()
                         );
 
+            } catch (UnsupportedLocationException ex) {
+                throw ex;
             } catch (Exception ex) {
 
                 hotels = List.of();
@@ -111,18 +120,12 @@ public class TripRecommendationServiceImpl
                 );
 
         /*
-         * Calculate transport only after Groq has selected
-         * the recommended places.
+         * Do not run exhaustive route calculations upfront across all candidates.
+         * Route distance and transport will be computed on the specific places
+         * selected by user or AI.
          */
-        BigDecimal transportCost =
-                recommendationTransportEstimator.estimate(
-                        request,
-                        recommendation,
-                        places
-                );
-
         recommendation.setEstimatedTransportCost(
-                transportCost
+                BigDecimal.ZERO
         );
 
         recommendation =

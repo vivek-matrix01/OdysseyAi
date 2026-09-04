@@ -25,4 +25,6 @@ public class UserSummaryResponse {
 
     private AccountStatus accountStatus;
 
+    private String profilePicture;
+
 }

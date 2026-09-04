@@ -45,6 +45,7 @@ public class ItineraryServiceImpl implements ItineraryService {
     private final EntityManager entityManager;
     private final ActivityRepository activityRepository;
     private final TripAccessService tripAccessService;
+    private final com.OdysseyAi.demo.travel.service.DestinationCurrencyService destinationCurrencyService;
 
 
     /*
@@ -193,9 +194,57 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         itinerary.replaceDays(days);
 
-        return itineraryMapper.toResponse(
-                itinerary
-        );
+        // Dynamically reconcile activity cost, road distance price, and total cost
+        BigDecimal activityCost = calculateActivityCost(itinerary);
+        if (activityCost.compareTo(BigDecimal.ZERO) == 0 && !days.isEmpty()) {
+            BigDecimal populated = BigDecimal.ZERO;
+            for (ItineraryDay d : days) {
+                if (d.getActivities() != null) {
+                    for (Activity act : d.getActivities()) {
+                        if (act.getEstimatedCost() == null || act.getEstimatedCost().compareTo(BigDecimal.ZERO) == 0) {
+                            BigDecimal fee = BigDecimal.valueOf(act.getType() == com.OdysseyAi.demo.common.enums.ActivityType.FOOD ? 300 : 200);
+                            act.setEstimatedCost(fee);
+                            populated = populated.add(fee);
+                        } else {
+                            populated = populated.add(act.getEstimatedCost());
+                        }
+                    }
+                }
+            }
+            activityCost = populated;
+        }
+
+        BigDecimal transportCost = safeAmount(itinerary.getEstimatedTransportCost());
+        if (transportCost.compareTo(BigDecimal.ZERO) == 0) {
+            int totalActivities = 0;
+            for (ItineraryDay d : days) {
+                if (d.getActivities() != null) {
+                    totalActivities += d.getActivities().size();
+                }
+            }
+            if (totalActivities >= 2) {
+                double totalKm = (totalActivities - 1) * 14.5;
+                transportCost = BigDecimal.valueOf(Math.round(totalKm * 14.0));
+            }
+        }
+
+        BigDecimal hotelCost = safeAmount(itinerary.getEstimatedHotelCost());
+        BigDecimal totalCost = hotelCost.add(activityCost).add(transportCost);
+
+        itinerary.updateCostBreakdown(hotelCost, activityCost, transportCost, totalCost);
+
+        ItineraryResponse response = itineraryMapper.toResponse(itinerary);
+        if (trip != null && trip.getDestination() != null) {
+            com.OdysseyAi.demo.travel.service.DestinationCurrencyService.DestinationCurrencyInfo destInfo =
+                    destinationCurrencyService.resolveDestination(trip.getDestination());
+            if (destInfo != null) {
+                response.setLocalCurrency(destInfo.getCurrencyCode());
+                response.setLocalCurrencySymbol(destInfo.getCurrencySymbol());
+                response.setExchangeRateFromInr(destInfo.getExchangeRateFromInr());
+            }
+        }
+
+        return response;
     }
 
 

@@ -21,6 +21,10 @@ public class RecommendedPlaceResponse {
 
     private String category;
 
+    private Double latitude;
+
+    private Double longitude;
+
     private Double rating;
 
     private Integer userRatingCount;

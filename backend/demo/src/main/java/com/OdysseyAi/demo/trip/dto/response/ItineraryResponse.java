@@ -44,4 +44,10 @@ public class ItineraryResponse {
     @Builder.Default
     private BigDecimal estimatedTotalCost =
             BigDecimal.ZERO;
+
+    private String localCurrency;
+
+    private String localCurrencySymbol;
+
+    private BigDecimal exchangeRateFromInr;
 }

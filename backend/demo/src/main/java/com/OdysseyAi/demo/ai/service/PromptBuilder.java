@@ -14,9 +14,9 @@ import java.util.List;
 @Component
 public class PromptBuilder {
 
-    private static final int MAX_ATTRACTIONS = 5;
-    private static final int MAX_RESTAURANTS = 5;
-    private static final int MAX_ROUTES = 3;
+    private static final int MAX_ATTRACTIONS = 20;
+    private static final int MAX_RESTAURANTS = 15;
+    private static final int MAX_ROUTES = 6;
 
     public String buildItineraryPrompt(
             Trip trip,

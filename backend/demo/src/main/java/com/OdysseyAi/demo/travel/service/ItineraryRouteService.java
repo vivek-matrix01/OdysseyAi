@@ -136,12 +136,22 @@ public class ItineraryRouteService {
                     );
                 }
 
-            } catch (Exception ignored) {
-
-                /*
-                 * Do not fail the entire itinerary if
-                 * driving route is unavailable.
-                 */
+            } catch (Exception ex) {
+                // Fallback route using Haversine * 1.35 road tortuosity
+                double distanceKm = calculateHaversineKm(origin.latitude(), origin.longitude(), destination.latitude(), destination.longitude());
+                long distanceMeters = Math.round(distanceKm * 1000);
+                long durationSeconds = Math.max(600L, Math.round(distanceKm * 130));
+                routes.add(
+                        RouteData.builder()
+                                .origin(origin.name())
+                                .destination(destination.name())
+                                .travelMode("DRIVE")
+                                .distanceMeters(distanceMeters)
+                                .durationSeconds(durationSeconds)
+                                .fare(java.math.BigDecimal.valueOf(Math.round(distanceKm * 14.0)))
+                                .fareCurrency("INR")
+                                .build()
+                );
             }
 
             /*
@@ -297,16 +307,34 @@ public class ItineraryRouteService {
             String first,
             String second
     ) {
+        if (first == null || second == null) return false;
+        String a = normalize(first);
+        String b = normalize(second);
 
-        String a =
-                normalize(first);
+        if (a.equals(b) || a.contains(b) || b.contains(a)) {
+            return true;
+        }
 
-        String b =
-                normalize(second);
+        // Check word overlap for multi-word place names
+        String[] wordsA = a.split(" ");
+        for (String w : wordsA) {
+            if (w.length() >= 4 && b.contains(w)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        return a.equals(b)
-                || a.contains(b)
-                || b.contains(a);
+    private double calculateHaversineKm(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double straightKm = R * c;
+        return Math.max(2.5, Math.round(straightKm * 1.35 * 10.0) / 10.0);
     }
 
     private String normalize(

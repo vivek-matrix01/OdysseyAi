@@ -49,4 +49,6 @@ public interface ExpenseRepository
             Long id,
             Trip trip
     );
+
+    void deleteByTrip(Trip trip);
 }

@@ -39,7 +39,12 @@ public class User extends BaseEntity implements UserDetails {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
+    @Setter
+    @Column(length = 255)
+    private String profilePicture;
+
     @Column(nullable = false)
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Enumerated(EnumType.STRING)

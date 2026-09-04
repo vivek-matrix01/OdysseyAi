@@ -38,4 +38,26 @@ public class TripRecommendationResponse {
             new ArrayList<>();
 
     private String recommendationReason;
+
+    private Double totalDistanceKm;
+
+    private BigDecimal petrolVehicleCost;
+
+    private BigDecimal dieselVehicleCost;
+
+    @Builder.Default
+    private List<RouteSegmentResponse> routeSegments =
+            new ArrayList<>();
+
+    @Builder.Default
+    private List<String> potentialProblems =
+            new ArrayList<>();
+
+    private String localCurrency;
+
+    private String localCurrencySymbol;
+
+    private BigDecimal exchangeRateFromInr;
+
+    private BigDecimal localPetrolPricePerLiter;
 }

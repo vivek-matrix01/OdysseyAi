@@ -61,8 +61,8 @@ public class RecommendationPromptBuilder {
                 1. Match recommendations to the user's trip type.
                 2. Respect the user's budget.
                 3. Prefer highly rated options when appropriate.
-                4. Prefer geographically practical places.
-                5. Consider travel duration and distance.
+                4. Focus on places and attractions that best match the destination experience, user interests, and ratings. Do NOT restrict or filter out places based on distance.
+                5. Provide a diverse mix of culture, nature, dining, and sights regardless of distance. Route distance will only be calculated after specific places are chosen by the user or AI.
                 6. Consider weather when ranking outdoor activities.
                 7. Use real hotel prices when hotel data is supplied.
                 8. Never invent hotels.
@@ -75,6 +75,8 @@ public class RecommendationPromptBuilder {
                 15. If hotel data is unavailable, return an empty hotels array.
                 16. Do not return markdown.
                 17. Return only valid JSON.
+                18. Provide a rich and generous selection of options: recommend at least 12 to 16 places/attractions (spanning sightseeing, culture, nature, and food) and at least 8 to 12 verified hotels from the supplied data so the user has plenty of diverse options to pick from.
+                19. Risk & Problem Prediction: Analyze the destination weather, seasonality, distances between places, timing/closings, and budget. Generate a "potentialProblems" array containing 3 to 5 realistic, insightful warning points predicting what things could cause problems during this trip (e.g. weather/rain disruptions, heavy traffic between far attractions, peak-season surge prices, closing days for monuments/museums, or physical terrain challenges) with practical advice on how to avoid them.
 
                 RETURN EXACTLY THIS JSON STRUCTURE:
 
@@ -109,7 +111,10 @@ public class RecommendationPromptBuilder {
                       "reason": "string"
                     }
                   ],
-                  "recommendationReason": "string"
+                  "recommendationReason": "string",
+                  "potentialProblems": [
+                    "string"
+                  ]
                 }
 
                 Only recommend places from the supplied PLACES data.
@@ -142,7 +147,7 @@ public class RecommendationPromptBuilder {
         for (PlaceData place :
                 context.getPlaces()) {
 
-            if (placeCount >= 10) {
+            if (placeCount >= 35) {
                 break;
             }
 
@@ -260,7 +265,7 @@ public class RecommendationPromptBuilder {
                 new StringBuilder();
 
         int limit =
-                Math.min(5, hotels.size());
+                Math.min(25, hotels.size());
 
         for (int i = 0; i < limit; i++) {
 

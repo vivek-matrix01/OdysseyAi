@@ -31,4 +31,6 @@ public interface TripMemberRepository
             Trip trip,
             Long userId
     );
+
+    void deleteByTrip(Trip trip);
 }

@@ -14,6 +14,7 @@ public interface ItineraryRepository extends JpaRepository<Itinerary, Long> {
 
     boolean existsByTrip(Trip trip);
 
-
     Optional<Itinerary> findWithDaysAndActivitiesByTrip(Trip trip);
+
+    void deleteByTrip(Trip trip);
 }

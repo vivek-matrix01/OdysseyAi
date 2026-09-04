@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     // 400 BAD REQUEST
-    @ExceptionHandler({BadRequestException.class,InvalidTripStateException.class})
+    @ExceptionHandler({BadRequestException.class, InvalidTripStateException.class, UnsupportedLocationException.class})
     public ResponseEntity<ApiError> handleBadRequest(Exception ex, HttpServletRequest request) {
         return buildErrorResponse(ex, HttpStatus.BAD_REQUEST, request);
     }
@@ -54,6 +55,23 @@ public class GlobalExceptionHandler {
                 error,
                 HttpStatus.BAD_REQUEST
         );
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiError> handleDisabledException(Exception ex, HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return new ResponseEntity<>(
+                error,
+                HttpStatus.BAD_REQUEST
+        );
+
     }
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ApiError> handleMethodValidationException(

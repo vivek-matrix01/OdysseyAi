@@ -1,5 +1,6 @@
 package com.OdysseyAi.demo.travel.service;
 
+import com.OdysseyAi.demo.common.exception.customexception.UnsupportedLocationException;
 import com.OdysseyAi.demo.travel.dto.DestinationData;
 import com.OdysseyAi.demo.travel.dto.PlaceData;
 import com.OdysseyAi.demo.travel.dto.RouteData;
@@ -70,7 +71,7 @@ public class TravelDataServiceImpl
                         destination.getLatitude(),
                         destination.getLongitude(),
                         "tourist_attraction",
-                        10000
+                        25000
                 );
 
         List<PlaceData> restaurants =
@@ -78,7 +79,7 @@ public class TravelDataServiceImpl
                         destination.getLatitude(),
                         destination.getLongitude(),
                         "restaurant",
-                        10000
+                        20000
                 );
 
         List<WeatherData> weather =
@@ -91,14 +92,51 @@ public class TravelDataServiceImpl
         List<PlaceData> places =
                 new ArrayList<>();
 
-        places.addAll(attractions);
-        places.addAll(restaurants);
+        java.util.Set<String> seenPlaceIds = new java.util.HashSet<>();
+        if (attractions != null) {
+            for (PlaceData p : attractions) {
+                if (p.getId() != null && seenPlaceIds.add(p.getId())) {
+                    places.add(p);
+                }
+            }
+        }
 
+        try {
+            List<PlaceData> historical = placesClient.searchNearby(
+                    destination.getLatitude(),
+                    destination.getLongitude(),
+                    "historical_landmark",
+                    25000
+            );
+            if (historical != null) {
+                for (PlaceData p : historical) {
+                    if (p.getId() != null && seenPlaceIds.add(p.getId())) {
+                        places.add(p);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        if (restaurants != null) {
+            for (PlaceData p : restaurants) {
+                if (p.getId() != null && seenPlaceIds.add(p.getId())) {
+                    places.add(p);
+                }
+            }
+        }
+
+        if (places.isEmpty()) {
+            throw new UnsupportedLocationException(
+                    "Sorry, we do not provide services at this location."
+            );
+        }
+
+        /*
+         * Do not call Google Routes upfront during discovery.
+         * Distance will be calculated only after places are chosen by user or AI.
+         */
         List<RouteData> routes =
-                buildCandidateRoutes(
-                        destination,
-                        places
-                );
+                new ArrayList<>();
 
         BigDecimal exchangeRate =
                 currencyClient.getExchangeRate(
@@ -183,6 +221,12 @@ public class TravelDataServiceImpl
 
         places.addAll(attractions);
         places.addAll(restaurants);
+
+        if (places.isEmpty()) {
+            throw new UnsupportedLocationException(
+                    "Sorry, we do not provide services at this location."
+            );
+        }
 
         /*
          * No Google Routes calls here.

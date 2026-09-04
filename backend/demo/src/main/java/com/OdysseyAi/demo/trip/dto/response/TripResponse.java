@@ -18,6 +18,9 @@ public class TripResponse {
     private LocalDate startDate;
     private LocalDate endDate;
     private TripStatus status;
+    private Long ownerId;
+    private String ownerEmail;
+    private String ownerName;
     private Instant createdAt;
     private Instant updatedAt;
 }
