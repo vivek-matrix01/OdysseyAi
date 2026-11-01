@@ -3,9 +3,9 @@ spring:
     name: demo
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/OdysseyAi}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:megha}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
 
@@ -13,6 +13,7 @@ spring:
   docker:
     compose:
       file: docker-compose.yaml
+      enabled: false
 
   jpa:
     show-sql: true
@@ -29,12 +30,11 @@ spring:
 
 
   mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
 
-    host: ${MAIL_HOST:sandbox.smtp.mailtrap.io}
-    port: ${MAIL_PORT:2525}
-
-    username: ${MAIL_USERNAME:21334177a86a15}
-    password: ${MAIL_PASSWORD:dc833c4c3cf8a8}
     properties:
       mail:
         smtp:
@@ -43,10 +43,10 @@ spring:
             enable: true
 
 mail:
-  from: ${MAIL_FROM:no-reply@odysseyai.com}
+    from: ${MAIL_FROM:demoaithani@gmail.com}
 
 jwt:
-  secret: ${JWT_SECRET:3cfa76ef14937c1c0ea519f8fcab58e9feef74de3828c68ff8e3e7f41fbc8f59}
+  secret: ${JWT_SECRET}
   access-token-expiration-ms: 900000
 
   refresh-token-expiration-ms: 604800000
@@ -62,21 +62,19 @@ static-links:
   resetPasswordLink: ${RESET_PASSWORD_LINK:http://localhost:8080/api/auth/reset-password?token=}
 
 groq:
-  api-key: ${GROQ_API_KEY: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}
+  api-key: ${GROQ_API_KEY}
   base-url: https://api.groq.com/openai/v1
   model: openai/gpt-oss-20b
 
 google:
   maps:
-    api-key: ${GOOGLE_MAPS_API_KEY:AIzaSyDQWFfExkH_iy_8IbJkNbnFZvErAV9FEXo}
+    api-key: ${GOOGLE_MAPS_API_KEY}
     places-base-url: https://places.googleapis.com/v1
     routes-base-url: https://routes.googleapis.com
 transport:
   pricing:
     driving-cost-per-km: ${DRIVING_COST_PER_KM:15}
 serpapi:
-  api-key: ${SERPAPI_API_KEY:8abb1ffc22d6f7399cb26fd1856fd37adb2ea2d8c44d25e8d91112ff0e5e4dba}
+  api-key: ${SERPAPI_API_KEY}
   base-url: https://serpapi.com/search.json
 
-#  AIzaSyDQWFfExkH_iy_8IbJkNbnFZvErAV9FEXo
-#  AIzaSyB69U_iAVeFePfxfw2-uxcnvOVtmWwEPxw

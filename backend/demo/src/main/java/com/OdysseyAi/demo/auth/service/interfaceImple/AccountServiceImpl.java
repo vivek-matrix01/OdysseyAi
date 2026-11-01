@@ -124,6 +124,7 @@ public class AccountServiceImpl implements AccountService {
                 .ifPresent(user -> {
 
                     passwordResetTokenRepository.deleteByUser(user);
+                    passwordResetTokenRepository.flush();
 
                     String token = UUID.randomUUID().toString();
 
